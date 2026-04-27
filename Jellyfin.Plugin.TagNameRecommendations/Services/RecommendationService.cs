@@ -269,7 +269,7 @@ public class RecommendationService : IRecommendationService
         return tokens;
     }
 
-    private static void AddToken(ISet<string> tokens, List<char> token)
+    private static void AddToken(HashSet<string> tokens, List<char> token)
     {
         if (token.Count >= 2)
         {
@@ -279,7 +279,7 @@ public class RecommendationService : IRecommendationService
         token.Clear();
     }
 
-    private static double Jaccard(IReadOnlySet<string> left, IReadOnlySet<string> right)
+    private static double Jaccard(IReadOnlySet<string> left, HashSet<string> right)
     {
         if (left.Count == 0 || right.Count == 0)
         {
