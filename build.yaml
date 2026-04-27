@@ -7,7 +7,9 @@ framework: "net8.0"
 overview: "Simple Jellyfin recommendations based on item tags and names."
 description: >
   Adds a lightweight API endpoint that recommends similar Jellyfin video items
-  by comparing tags and title/name tokens against a seed item.
+  by comparing tags and title/name tokens against a seed item. Recently watched
+  recommendations require the official Playback Reporting plugin to be installed
+  and enabled.
 category: "General"
 owner: "local"
 artifacts:

@@ -67,6 +67,16 @@ public class RecommendationsController : ControllerBase
         [FromQuery] int? limit,
         [FromQuery] int? seedLimit)
     {
+        if (!_recommendationService.IsPlaybackReportingAvailable)
+        {
+            return StatusCode(StatusCodes.Status424FailedDependency, new
+            {
+                Error = "Playback Reporting plugin is required for recently watched recommendations.",
+                RequiredPlugin = "Playback Reporting",
+                RequiredPluginId = "5c534381-91a3-43cb-907a-35aa02eb9d2c"
+            });
+        }
+
         var response = _recommendationService.GetRecommendationsForRecentlyWatched(userId, limit, seedLimit);
 
         if (response is null)

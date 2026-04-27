@@ -9,6 +9,11 @@ namespace Jellyfin.Plugin.TagNameRecommendations.Services;
 public interface IRecommendationService
 {
     /// <summary>
+    /// Gets a value indicating whether the Playback Reporting plugin is installed and enabled.
+    /// </summary>
+    bool IsPlaybackReportingAvailable { get; }
+
+    /// <summary>
     /// Gets recommendations similar to a seed item.
     /// </summary>
     /// <param name="itemId">The seed item id.</param>

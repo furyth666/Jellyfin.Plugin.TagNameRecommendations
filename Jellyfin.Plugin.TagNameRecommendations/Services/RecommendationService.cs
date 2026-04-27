@@ -5,6 +5,7 @@ using System.Linq;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.TagNameRecommendations.Configuration;
 using Jellyfin.Plugin.TagNameRecommendations.Models;
+using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 
@@ -13,7 +14,10 @@ namespace Jellyfin.Plugin.TagNameRecommendations.Services;
 /// <inheritdoc />
 public class RecommendationService : IRecommendationService
 {
+    private static readonly Guid PlaybackReportingPluginId = Guid.Parse("5c534381-91a3-43cb-907a-35aa02eb9d2c");
+
     private readonly ILibraryManager _libraryManager;
+    private readonly IPluginManager _pluginManager;
     private readonly IUserDataManager _userDataManager;
     private readonly IUserManager _userManager;
 
@@ -21,17 +25,24 @@ public class RecommendationService : IRecommendationService
     /// Initializes a new instance of the <see cref="RecommendationService"/> class.
     /// </summary>
     /// <param name="libraryManager">The library manager.</param>
+    /// <param name="pluginManager">The plugin manager.</param>
     /// <param name="userDataManager">The user data manager.</param>
     /// <param name="userManager">The user manager.</param>
     public RecommendationService(
         ILibraryManager libraryManager,
+        IPluginManager pluginManager,
         IUserDataManager userDataManager,
         IUserManager userManager)
     {
         _libraryManager = libraryManager;
+        _pluginManager = pluginManager;
         _userDataManager = userDataManager;
         _userManager = userManager;
     }
+
+    /// <inheritdoc />
+    public bool IsPlaybackReportingAvailable =>
+        _pluginManager.GetPlugin(PlaybackReportingPluginId)?.IsEnabledAndSupported == true;
 
     /// <inheritdoc />
     public RecommendationResponse? GetRecommendations(Guid itemId, Guid? userId, int? limit)
@@ -82,6 +93,11 @@ public class RecommendationService : IRecommendationService
     /// <inheritdoc />
     public RecommendationResponse? GetRecommendationsForRecentlyWatched(Guid userId, int? limit, int? seedLimit)
     {
+        if (!IsPlaybackReportingAvailable)
+        {
+            return null;
+        }
+
         var user = _userManager.GetUserById(userId);
         if (user is null)
         {
