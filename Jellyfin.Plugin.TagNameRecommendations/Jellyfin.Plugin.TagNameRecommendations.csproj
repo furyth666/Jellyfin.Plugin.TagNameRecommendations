@@ -4,6 +4,7 @@
     <RootNamespace>Jellyfin.Plugin.TagNameRecommendations</RootNamespace>
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
