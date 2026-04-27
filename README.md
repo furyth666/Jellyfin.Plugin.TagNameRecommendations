@@ -28,7 +28,7 @@ GET /JellyfinRecommendations/Recommendations?itemId={itemId}&userId={userId}&lim
 - Tag 相似度：seed item 与候选 item 的 tag Jaccard 相似度。
 - 名称相似度：标题分词后的 Jaccard 相似度。
 - 名称包含 bonus：一个标题包含另一个标题时，给小额加分。
-- 最近观看推荐：需要 Playback Reporting 已安装启用；seed 会参考用户播放位置，太短的跳转进度会被过滤。
+- 最近观看推荐：需要 Playback Reporting 已安装启用；seed 使用 Playback Reporting 的真实播放秒数，太短的跳转或误触不会作为推荐依据。
 - 最终分数：按插件配置页里的权重换算到 0-100。
 
 ## Build

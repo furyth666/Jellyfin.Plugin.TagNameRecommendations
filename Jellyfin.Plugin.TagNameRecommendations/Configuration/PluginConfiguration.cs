@@ -49,7 +49,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public int RecentWatchedCount { get; set; }
 
     /// <summary>
-    /// Gets or sets the minimum playback position, in seconds, for resumable items used as recommendation seeds.
+    /// Gets or sets the minimum real playback duration, in seconds, for Playback Reporting seeds.
     /// </summary>
     public int MinimumSeedPlaybackSeconds { get; set; }
 

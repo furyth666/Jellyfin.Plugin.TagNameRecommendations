@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.TagNameRecommendations.Configuration;
 using Jellyfin.Plugin.TagNameRecommendations.Models;
 using MediaBrowser.Common.Plugins;
+using MediaBrowser.Controller;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Entities;
+using SQLitePCL.pretty;
 
 namespace Jellyfin.Plugin.TagNameRecommendations.Services;
 
@@ -15,7 +19,15 @@ namespace Jellyfin.Plugin.TagNameRecommendations.Services;
 public class RecommendationService : IRecommendationService
 {
     private static readonly Guid PlaybackReportingPluginId = Guid.Parse("5c534381-91a3-43cb-907a-35aa02eb9d2c");
+    private static readonly BaseItemKind[] SupportedSeedKinds =
+    [
+        BaseItemKind.Movie,
+        BaseItemKind.Series,
+        BaseItemKind.Episode,
+        BaseItemKind.MusicVideo
+    ];
 
+    private readonly IServerApplicationPaths _applicationPaths;
     private readonly ILibraryManager _libraryManager;
     private readonly IPluginManager _pluginManager;
     private readonly IUserDataManager _userDataManager;
@@ -24,16 +36,19 @@ public class RecommendationService : IRecommendationService
     /// <summary>
     /// Initializes a new instance of the <see cref="RecommendationService"/> class.
     /// </summary>
+    /// <param name="applicationPaths">The server application paths.</param>
     /// <param name="libraryManager">The library manager.</param>
     /// <param name="pluginManager">The plugin manager.</param>
     /// <param name="userDataManager">The user data manager.</param>
     /// <param name="userManager">The user manager.</param>
     public RecommendationService(
+        IServerApplicationPaths applicationPaths,
         ILibraryManager libraryManager,
         IPluginManager pluginManager,
         IUserDataManager userDataManager,
         IUserManager userManager)
     {
+        _applicationPaths = applicationPaths;
         _libraryManager = libraryManager;
         _pluginManager = pluginManager;
         _userDataManager = userDataManager;
@@ -108,23 +123,12 @@ public class RecommendationService : IRecommendationService
         var resultLimit = Math.Clamp(limit ?? config.DefaultLimit, 1, 100);
         var maxCandidates = Math.Clamp(config.MaxCandidates, resultLimit, 5000);
         var recentLimit = Math.Clamp(seedLimit ?? config.RecentWatchedCount, 1, 50);
-        var minimumPlaybackTicks = TimeSpan.FromSeconds(Math.Clamp(config.MinimumSeedPlaybackSeconds, 0, 86400)).Ticks;
-        var recentQueryLimit = Math.Clamp(recentLimit * 4, recentLimit, 200);
+        var minimumPlaybackSeconds = Math.Clamp(config.MinimumSeedPlaybackSeconds, 0, 86400);
 
-        var recentItems = _libraryManager.GetItemList(new InternalItemsQuery(user)
-        {
-            Recursive = true,
-            Limit = recentQueryLimit,
-            IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Series, BaseItemKind.Episode, BaseItemKind.MusicVideo],
-            MediaTypes = [MediaType.Video],
-            IsVirtualItem = false,
-            OrderBy = [(ItemSortBy.DatePlayed, SortOrder.Descending), (ItemSortBy.SortName, SortOrder.Ascending)],
-            EnableTotalRecordCount = false
-        })
-            .Select(item => CreateSeed(item, user))
-            .Where(seed => seed.Played || seed.PlaybackPositionTicks >= minimumPlaybackTicks)
-            .OrderByDescending(seed => seed.LastPlayedDate ?? DateTime.MinValue)
-            .ThenBy(seed => seed.Item.SortName, StringComparer.OrdinalIgnoreCase)
+        var recentItems = GetRecentPlaybackReportSeeds(user.Id, minimumPlaybackSeconds, Math.Clamp(recentLimit * 4, recentLimit, 200))
+            .Select(activity => CreateSeed(activity, user))
+            .Where(seed => seed is not null)
+            .Select(seed => seed!)
             .Take(recentLimit)
             .ToArray();
 
@@ -143,7 +147,7 @@ public class RecommendationService : IRecommendationService
             Recursive = true,
             Limit = maxCandidates,
             ExcludeItemIds = seedIds,
-            IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Series, BaseItemKind.Episode, BaseItemKind.MusicVideo],
+            IncludeItemTypes = SupportedSeedKinds,
             MediaTypes = [MediaType.Video],
             IsVirtualItem = false,
             EnableTotalRecordCount = false
@@ -172,8 +176,19 @@ public class RecommendationService : IRecommendationService
         };
     }
 
-    private SeedPlayback CreateSeed(BaseItem item, Jellyfin.Data.Entities.User user)
+    private SeedPlayback? CreateSeed(PlaybackActivity activity, Jellyfin.Data.Entities.User user)
     {
+        if (!Guid.TryParse(activity.ItemId, out var itemId))
+        {
+            return null;
+        }
+
+        var item = _libraryManager.GetItemById<BaseItem>(itemId, user);
+        if (item is null || item.MediaType != MediaType.Video || !SupportedSeedKinds.Contains(item.GetBaseItemKind()))
+        {
+            return null;
+        }
+
         var userData = _userDataManager.GetUserData(user, item);
         var playbackPositionTicks = Math.Max(0, userData.PlaybackPositionTicks);
         var playbackPositionSeconds = TimeSpan.FromTicks(playbackPositionTicks).TotalSeconds;
@@ -184,6 +199,9 @@ public class RecommendationService : IRecommendationService
         return new SeedPlayback(
             item,
             userData.LastPlayedDate,
+            activity.LastPlaybackActivityDate,
+            activity.ActualPlaybackSeconds,
+            activity.PlaybackReportPlayCount,
             playbackPositionTicks,
             playbackPositionSeconds,
             playedPercentage,
@@ -193,8 +211,52 @@ public class RecommendationService : IRecommendationService
     private static double GetSeedWeight(SeedPlayback seed, int index)
     {
         var recencyWeight = 1 / (1 + index * 0.35);
-        var progressWeight = seed.Played ? 1 : Math.Clamp((seed.PlayedPercentage ?? 0) / 50, 0.2, 1);
-        return recencyWeight * progressWeight;
+        var durationWeight = Math.Clamp(seed.ActualPlaybackSeconds / 1800.0, 0.2, 1.5);
+        return recencyWeight * durationWeight;
+    }
+
+    private IReadOnlyList<PlaybackActivity> GetRecentPlaybackReportSeeds(Guid userId, int minimumPlaybackSeconds, int limit)
+    {
+        var databasePath = Path.Combine(_applicationPaths.DataPath, "playback_reporting.db");
+        if (!File.Exists(databasePath))
+        {
+            return [];
+        }
+
+        var itemTypes = string.Join(",", SupportedSeedKinds.Select(kind => $"'{kind}'"));
+        var sql = $@"
+SELECT
+    ItemId,
+    MAX(DateCreated) AS LastPlaybackActivityDate,
+    SUM(CASE WHEN PlayDuration > 0 THEN PlayDuration ELSE 0 END) AS ActualPlaybackSeconds,
+    COUNT(1) AS PlaybackReportPlayCount
+FROM PlaybackActivity
+WHERE (UserId = @UserIdN OR UserId = @UserIdD)
+    AND ItemType IN ({itemTypes})
+    AND PlayDuration > 0
+GROUP BY ItemId
+HAVING ActualPlaybackSeconds >= @MinimumPlaybackSeconds
+ORDER BY LastPlaybackActivityDate DESC
+LIMIT @Limit";
+
+        var activities = new List<PlaybackActivity>();
+        using var connection = SQLite3.Open(databasePath, ConnectionFlags.ReadOnly, null);
+        using var statement = connection.PrepareStatement(sql);
+        statement.TryBind("@UserIdN", userId.ToString("N", CultureInfo.InvariantCulture));
+        statement.TryBind("@UserIdD", userId.ToString("D", CultureInfo.InvariantCulture));
+        statement.TryBind("@MinimumPlaybackSeconds", minimumPlaybackSeconds);
+        statement.TryBind("@Limit", limit);
+
+        foreach (var row in statement.ExecuteQuery())
+        {
+            activities.Add(new PlaybackActivity(
+                row[0].ToString(),
+                row[1].ReadDateTime(),
+                row[2].ToInt(),
+                row[3].ToInt()));
+        }
+
+        return activities;
     }
 
     private static RecommendationCandidate ScoreItem(
@@ -340,6 +402,9 @@ public class RecommendationService : IRecommendationService
     private sealed record SeedPlayback(
         BaseItem Item,
         DateTime? LastPlayedDate,
+        DateTime? LastPlaybackActivityDate,
+        int ActualPlaybackSeconds,
+        int PlaybackReportPlayCount,
         long PlaybackPositionTicks,
         double PlaybackPositionSeconds,
         double? PlayedPercentage,
@@ -352,6 +417,9 @@ public class RecommendationService : IRecommendationService
                 Id = Item.Id,
                 Name = Item.Name,
                 LastPlayedDate = LastPlayedDate,
+                LastPlaybackActivityDate = LastPlaybackActivityDate,
+                ActualPlaybackSeconds = ActualPlaybackSeconds,
+                PlaybackReportPlayCount = PlaybackReportPlayCount,
                 PlaybackPositionTicks = PlaybackPositionTicks,
                 PlaybackPositionSeconds = Math.Round(PlaybackPositionSeconds, 2),
                 RunTimeTicks = Item.RunTimeTicks,
@@ -360,4 +428,10 @@ public class RecommendationService : IRecommendationService
             };
         }
     }
+
+    private sealed record PlaybackActivity(
+        string ItemId,
+        DateTime LastPlaybackActivityDate,
+        int ActualPlaybackSeconds,
+        int PlaybackReportPlayCount);
 }

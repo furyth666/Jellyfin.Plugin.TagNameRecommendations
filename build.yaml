@@ -14,5 +14,6 @@ category: "General"
 owner: "local"
 artifacts:
 - "Jellyfin.Plugin.TagNameRecommendations.dll"
+- "SQLitePCL.pretty.dll"
 changelog: >
   Initial local plugin skeleton with configurable tag/name scoring.

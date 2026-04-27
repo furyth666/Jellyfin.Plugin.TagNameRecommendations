@@ -23,6 +23,21 @@ public class RecommendationSeed
     public DateTime? LastPlayedDate { get; set; }
 
     /// <summary>
+    /// Gets or sets the latest Playback Reporting activity date for the user.
+    /// </summary>
+    public DateTime? LastPlaybackActivityDate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the real playback duration reported by Playback Reporting, in seconds.
+    /// </summary>
+    public int ActualPlaybackSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many Playback Reporting records contributed to the real playback duration.
+    /// </summary>
+    public int PlaybackReportPlayCount { get; set; }
+
+    /// <summary>
     /// Gets or sets the saved playback position in ticks.
     /// </summary>
     public long PlaybackPositionTicks { get; set; }

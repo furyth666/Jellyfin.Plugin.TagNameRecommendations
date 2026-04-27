@@ -35,5 +35,6 @@ jobs:
           name: Jellyfin.Plugin.TagNameRecommendations
           path: |
             Jellyfin.Plugin.TagNameRecommendations/bin/Release/net8.0/Jellyfin.Plugin.TagNameRecommendations.dll
+            Jellyfin.Plugin.TagNameRecommendations/bin/Release/net8.0/SQLitePCL.pretty.dll
             build.yaml
           if-no-files-found: error
