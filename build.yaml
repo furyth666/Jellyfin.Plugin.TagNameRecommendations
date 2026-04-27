@@ -1,0 +1,16 @@
+---
+name: "Tag Name Recommendations"
+guid: "69d4f8cf-0a27-45b6-8e5f-fae06fbf9b6c"
+version: "0.1.0.0"
+targetAbi: "10.9.0.0"
+framework: "net8.0"
+overview: "Simple Jellyfin recommendations based on item tags and names."
+description: >
+  Adds a lightweight API endpoint that recommends similar Jellyfin video items
+  by comparing tags and title/name tokens against a seed item.
+category: "General"
+owner: "local"
+artifacts:
+- "Jellyfin.Plugin.TagNameRecommendations.dll"
+changelog: >
+  Initial local plugin skeleton with configurable tag/name scoring.

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Tag Name Recommendations</title>
+</head>
+<body>
+    <div id="TagNameRecommendationsConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="TagNameRecommendationsConfigForm">
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="TagWeight">Tag weight</label>
+                        <input id="TagWeight" name="TagWeight" type="number" is="emby-input" min="0" step="0.01" />
+                        <div class="fieldDescription">How strongly shared tags affect recommendations.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="NameWeight">Name weight</label>
+                        <input id="NameWeight" name="NameWeight" type="number" is="emby-input" min="0" step="0.01" />
+                        <div class="fieldDescription">How strongly shared words in names affect recommendations.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="NameContainsBonus">Name contains bonus</label>
+                        <input id="NameContainsBonus" name="NameContainsBonus" type="number" is="emby-input" min="0" step="0.01" />
+                        <div class="fieldDescription">Small bonus when one title contains the other.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="DefaultLimit">Default limit</label>
+                        <input id="DefaultLimit" name="DefaultLimit" type="number" is="emby-input" min="1" max="100" />
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="RecentWatchedCount">Recent watched count</label>
+                        <input id="RecentWatchedCount" name="RecentWatchedCount" type="number" is="emby-input" min="1" max="50" />
+                        <div class="fieldDescription">How many recently watched videos are used as recommendation seeds.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="MaxCandidates">Max candidates</label>
+                        <input id="MaxCandidates" name="MaxCandidates" type="number" is="emby-input" min="50" max="5000" />
+                        <div class="fieldDescription">Maximum number of video items scored per request.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="MinimumScore">Minimum score</label>
+                        <input id="MinimumScore" name="MinimumScore" type="number" is="emby-input" min="0" max="100" step="0.1" />
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="ExcludePlayedItems" name="ExcludePlayedItems" type="checkbox" is="emby-checkbox" />
+                            <span>Exclude already played items</span>
+                        </label>
+                    </div>
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var TagNameRecommendationsConfig = {
+                pluginUniqueId: '69d4f8cf-0a27-45b6-8e5f-fae06fbf9b6c'
+            };
+
+            document.querySelector('#TagNameRecommendationsConfigPage')
+                .addEventListener('pageshow', function() {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TagNameRecommendationsConfig.pluginUniqueId).then(function (config) {
+                        document.querySelector('#TagWeight').value = config.TagWeight;
+                        document.querySelector('#NameWeight').value = config.NameWeight;
+                        document.querySelector('#NameContainsBonus').value = config.NameContainsBonus;
+                        document.querySelector('#DefaultLimit').value = config.DefaultLimit;
+                        document.querySelector('#RecentWatchedCount').value = config.RecentWatchedCount;
+                        document.querySelector('#MaxCandidates').value = config.MaxCandidates;
+                        document.querySelector('#MinimumScore').value = config.MinimumScore;
+                        document.querySelector('#ExcludePlayedItems').checked = config.ExcludePlayedItems;
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+            document.querySelector('#TagNameRecommendationsConfigForm')
+                .addEventListener('submit', function(e) {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TagNameRecommendationsConfig.pluginUniqueId).then(function (config) {
+                        config.TagWeight = parseFloat(document.querySelector('#TagWeight').value);
+                        config.NameWeight = parseFloat(document.querySelector('#NameWeight').value);
+                        config.NameContainsBonus = parseFloat(document.querySelector('#NameContainsBonus').value);
+                        config.DefaultLimit = parseInt(document.querySelector('#DefaultLimit').value, 10);
+                        config.RecentWatchedCount = parseInt(document.querySelector('#RecentWatchedCount').value, 10);
+                        config.MaxCandidates = parseInt(document.querySelector('#MaxCandidates').value, 10);
+                        config.MinimumScore = parseFloat(document.querySelector('#MinimumScore').value);
+                        config.ExcludePlayedItems = document.querySelector('#ExcludePlayedItems').checked;
+                        ApiClient.updatePluginConfiguration(TagNameRecommendationsConfig.pluginUniqueId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+
+                    e.preventDefault();
+                    return false;
+                });
+        </script>
+    </div>
+</body>
+</html>
