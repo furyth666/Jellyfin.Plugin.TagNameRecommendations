@@ -251,12 +251,19 @@ LIMIT @Limit";
         {
             activities.Add(new PlaybackActivity(
                 row[0].ToString(),
-                row[1].ReadDateTime(),
+                ParseDateTime(row[1].ToString()),
                 row[2].ToInt(),
                 row[3].ToInt()));
         }
 
         return activities;
+    }
+
+    private static DateTime ParseDateTime(string? value)
+    {
+        return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var date)
+            ? date
+            : DateTime.MinValue;
     }
 
     private static RecommendationCandidate ScoreItem(
