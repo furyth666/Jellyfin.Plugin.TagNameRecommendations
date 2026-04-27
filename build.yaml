@@ -1,7 +1,7 @@
 ---
 name: "Tag Name Recommendations"
 guid: "69d4f8cf-0a27-45b6-8e5f-fae06fbf9b6c"
-version: "0.1.0.0"
+version: "0.2.0.0"
 targetAbi: "10.9.0.0"
 framework: "net8.0"
 overview: "Simple Jellyfin recommendations based on item tags and names."
@@ -16,4 +16,4 @@ artifacts:
 - "Jellyfin.Plugin.TagNameRecommendations.dll"
 - "SQLitePCL.pretty.dll"
 changelog: >
-  Initial local plugin skeleton with configurable tag/name scoring.
+  Use Playback Reporting real playback durations for recent recommendation seeds.
