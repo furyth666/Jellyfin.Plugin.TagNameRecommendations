@@ -12,6 +12,16 @@
 
 如果没有安装或未启用，`RecentlyWatched` 接口会返回 `424 Failed Dependency`。
 
+## Install
+
+在 Jellyfin 后台的插件仓库中添加这个 URL：
+
+```text
+https://raw.githubusercontent.com/furyth666/Jellyfin.Plugin.TagNameRecommendations/main/manifest.json
+```
+
+然后在 Catalog 里安装 `Tag Name Recommendations`。
+
 ## API
 
 ```text

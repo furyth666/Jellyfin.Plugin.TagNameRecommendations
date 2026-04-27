@@ -1,0 +1,20 @@
+[
+  {
+    "category": "General",
+    "guid": "69d4f8cf-0a27-45b6-8e5f-fae06fbf9b6c",
+    "name": "Tag Name Recommendations",
+    "description": "Adds lightweight recommendation endpoints by comparing tags and title/name tokens. Recently watched recommendations require the official Playback Reporting plugin and use its real playback durations.",
+    "owner": "furyth666",
+    "overview": "Simple Jellyfin recommendations based on item tags, names, and real playback duration.",
+    "versions": [
+      {
+        "checksum": "d86bb75c5177980c5f0dd3fef8ae5d3b",
+        "changelog": "Use Playback Reporting real playback durations for recent recommendation seeds.",
+        "targetAbi": "10.9.0.0",
+        "sourceUrl": "https://github.com/furyth666/Jellyfin.Plugin.TagNameRecommendations/releases/download/v0.2.0.0/Jellyfin.Plugin.TagNameRecommendations_0.2.0.0.zip",
+        "timestamp": "2026-04-27 08:07:45",
+        "version": "0.2.0.0"
+      }
+    ]
+  }
+]
