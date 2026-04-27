@@ -215,7 +215,7 @@ public class RecommendationService : IRecommendationService
         return recencyWeight * durationWeight;
     }
 
-    private IReadOnlyList<PlaybackActivity> GetRecentPlaybackReportSeeds(Guid userId, int minimumPlaybackSeconds, int limit)
+    private List<PlaybackActivity> GetRecentPlaybackReportSeeds(Guid userId, int minimumPlaybackSeconds, int limit)
     {
         var databasePath = Path.Combine(_applicationPaths.DataPath, "playback_reporting.db");
         if (!File.Exists(databasePath))
@@ -242,12 +242,12 @@ LIMIT @Limit";
         var activities = new List<PlaybackActivity>();
         using var connection = SQLite3.Open(databasePath, ConnectionFlags.ReadOnly, null);
         using var statement = connection.PrepareStatement(sql);
-        statement.TryBind("@UserIdN", userId.ToString("N", CultureInfo.InvariantCulture));
-        statement.TryBind("@UserIdD", userId.ToString("D", CultureInfo.InvariantCulture));
-        statement.TryBind("@MinimumPlaybackSeconds", minimumPlaybackSeconds);
-        statement.TryBind("@Limit", limit);
+        statement.BindParameters["@UserIdN"].Bind(userId.ToString("N", CultureInfo.InvariantCulture));
+        statement.BindParameters["@UserIdD"].Bind(userId.ToString("D", CultureInfo.InvariantCulture));
+        statement.BindParameters["@MinimumPlaybackSeconds"].Bind(minimumPlaybackSeconds);
+        statement.BindParameters["@Limit"].Bind(limit);
 
-        foreach (var row in statement.ExecuteQuery())
+        foreach (var row in statement.Query())
         {
             activities.Add(new PlaybackActivity(
                 row[0].ToString(),
