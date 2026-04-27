@@ -17,6 +17,7 @@ public class PluginConfiguration : BasePluginConfiguration
         NameContainsBonus = 0.08;
         DefaultLimit = 20;
         RecentWatchedCount = 8;
+        MinimumSeedPlaybackSeconds = 60;
         MaxCandidates = 500;
         MinimumScore = 5;
         ExcludePlayedItems = true;
@@ -46,6 +47,11 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets how many recently watched items are used as recommendation seeds.
     /// </summary>
     public int RecentWatchedCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum playback position, in seconds, for resumable items used as recommendation seeds.
+    /// </summary>
+    public int MinimumSeedPlaybackSeconds { get; set; }
 
     /// <summary>
     /// Gets or sets the maximum number of library candidates to score.

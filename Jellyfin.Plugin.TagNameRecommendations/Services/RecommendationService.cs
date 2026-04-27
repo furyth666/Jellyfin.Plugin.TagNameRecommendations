@@ -14,16 +14,22 @@ namespace Jellyfin.Plugin.TagNameRecommendations.Services;
 public class RecommendationService : IRecommendationService
 {
     private readonly ILibraryManager _libraryManager;
+    private readonly IUserDataManager _userDataManager;
     private readonly IUserManager _userManager;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RecommendationService"/> class.
     /// </summary>
     /// <param name="libraryManager">The library manager.</param>
+    /// <param name="userDataManager">The user data manager.</param>
     /// <param name="userManager">The user manager.</param>
-    public RecommendationService(ILibraryManager libraryManager, IUserManager userManager)
+    public RecommendationService(
+        ILibraryManager libraryManager,
+        IUserDataManager userDataManager,
+        IUserManager userManager)
     {
         _libraryManager = libraryManager;
+        _userDataManager = userDataManager;
         _userManager = userManager;
     }
 
@@ -86,28 +92,35 @@ public class RecommendationService : IRecommendationService
         var resultLimit = Math.Clamp(limit ?? config.DefaultLimit, 1, 100);
         var maxCandidates = Math.Clamp(config.MaxCandidates, resultLimit, 5000);
         var recentLimit = Math.Clamp(seedLimit ?? config.RecentWatchedCount, 1, 50);
+        var minimumPlaybackTicks = TimeSpan.FromSeconds(Math.Clamp(config.MinimumSeedPlaybackSeconds, 0, 86400)).Ticks;
+        var recentQueryLimit = Math.Clamp(recentLimit * 4, recentLimit, 200);
 
         var recentItems = _libraryManager.GetItemList(new InternalItemsQuery(user)
         {
             Recursive = true,
-            Limit = recentLimit,
+            Limit = recentQueryLimit,
             IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Series, BaseItemKind.Episode, BaseItemKind.MusicVideo],
             MediaTypes = [MediaType.Video],
             IsVirtualItem = false,
-            IsPlayed = true,
             OrderBy = [(ItemSortBy.DatePlayed, SortOrder.Descending), (ItemSortBy.SortName, SortOrder.Ascending)],
             EnableTotalRecordCount = false
-        });
+        })
+            .Select(item => CreateSeed(item, user))
+            .Where(seed => seed.Played || seed.PlaybackPositionTicks >= minimumPlaybackTicks)
+            .OrderByDescending(seed => seed.LastPlayedDate ?? DateTime.MinValue)
+            .ThenBy(seed => seed.Item.SortName, StringComparer.OrdinalIgnoreCase)
+            .Take(recentLimit)
+            .ToArray();
 
-        if (recentItems.Count == 0)
+        if (recentItems.Length == 0)
         {
             return new RecommendationResponse();
         }
 
         var seedProfiles = recentItems
-            .Select((item, index) => new SeedProfile(item, 1 / (1 + index * 0.35)))
+            .Select((seed, index) => new SeedProfile(seed.Item, GetSeedWeight(seed, index)))
             .ToArray();
-        var seedIds = recentItems.Select(item => item.Id).ToArray();
+        var seedIds = recentItems.Select(seed => seed.Item.Id).ToArray();
 
         var candidateQuery = new InternalItemsQuery(user)
         {
@@ -136,11 +149,36 @@ public class RecommendationService : IRecommendationService
 
         return new RecommendationResponse
         {
-            SeedItemId = recentItems[0].Id,
-            SeedItemName = recentItems[0].Name,
-            Seeds = recentItems.Select(item => new RecommendationSeed { Id = item.Id, Name = item.Name }).ToArray(),
+            SeedItemId = recentItems[0].Item.Id,
+            SeedItemName = recentItems[0].Item.Name,
+            Seeds = recentItems.Select(seed => seed.ToRecommendationSeed()).ToArray(),
             Items = scoredItems
         };
+    }
+
+    private SeedPlayback CreateSeed(BaseItem item, Jellyfin.Data.Entities.User user)
+    {
+        var userData = _userDataManager.GetUserData(user, item);
+        var playbackPositionTicks = Math.Max(0, userData.PlaybackPositionTicks);
+        var playbackPositionSeconds = TimeSpan.FromTicks(playbackPositionTicks).TotalSeconds;
+        var playedPercentage = item.RunTimeTicks is > 0
+            ? Math.Round(Math.Clamp((double)playbackPositionTicks / item.RunTimeTicks.Value * 100, 0, 100), 2)
+            : (double?)null;
+
+        return new SeedPlayback(
+            item,
+            userData.LastPlayedDate,
+            playbackPositionTicks,
+            playbackPositionSeconds,
+            playedPercentage,
+            userData.Played);
+    }
+
+    private static double GetSeedWeight(SeedPlayback seed, int index)
+    {
+        var recencyWeight = 1 / (1 + index * 0.35);
+        var progressWeight = seed.Played ? 1 : Math.Clamp((seed.PlayedPercentage ?? 0) / 50, 0.2, 1);
+        return recencyWeight * progressWeight;
     }
 
     private static RecommendationCandidate ScoreItem(
@@ -281,5 +319,29 @@ public class RecommendationService : IRecommendationService
         public IReadOnlySet<string> Tags { get; }
 
         public IReadOnlySet<string> NameTokens { get; }
+    }
+
+    private sealed record SeedPlayback(
+        BaseItem Item,
+        DateTime? LastPlayedDate,
+        long PlaybackPositionTicks,
+        double PlaybackPositionSeconds,
+        double? PlayedPercentage,
+        bool Played)
+    {
+        public RecommendationSeed ToRecommendationSeed()
+        {
+            return new RecommendationSeed
+            {
+                Id = Item.Id,
+                Name = Item.Name,
+                LastPlayedDate = LastPlayedDate,
+                PlaybackPositionTicks = PlaybackPositionTicks,
+                PlaybackPositionSeconds = Math.Round(PlaybackPositionSeconds, 2),
+                RunTimeTicks = Item.RunTimeTicks,
+                PlayedPercentage = PlayedPercentage,
+                Played = Played
+            };
+        }
     }
 }

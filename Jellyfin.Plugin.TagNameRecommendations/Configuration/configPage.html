@@ -34,6 +34,11 @@
                         <div class="fieldDescription">How many recently watched videos are used as recommendation seeds.</div>
                     </div>
                     <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="MinimumSeedPlaybackSeconds">Minimum seed playback seconds</label>
+                        <input id="MinimumSeedPlaybackSeconds" name="MinimumSeedPlaybackSeconds" type="number" is="emby-input" min="0" max="86400" />
+                        <div class="fieldDescription">Resumable items below this saved playback position are ignored as seeds.</div>
+                    </div>
+                    <div class="inputContainer">
                         <label class="inputLabel inputLabelUnfocused" for="MaxCandidates">Max candidates</label>
                         <input id="MaxCandidates" name="MaxCandidates" type="number" is="emby-input" min="50" max="5000" />
                         <div class="fieldDescription">Maximum number of video items scored per request.</div>
@@ -70,6 +75,7 @@
                         document.querySelector('#NameContainsBonus').value = config.NameContainsBonus;
                         document.querySelector('#DefaultLimit').value = config.DefaultLimit;
                         document.querySelector('#RecentWatchedCount').value = config.RecentWatchedCount;
+                        document.querySelector('#MinimumSeedPlaybackSeconds').value = config.MinimumSeedPlaybackSeconds;
                         document.querySelector('#MaxCandidates').value = config.MaxCandidates;
                         document.querySelector('#MinimumScore').value = config.MinimumScore;
                         document.querySelector('#ExcludePlayedItems').checked = config.ExcludePlayedItems;
@@ -86,6 +92,7 @@
                         config.NameContainsBonus = parseFloat(document.querySelector('#NameContainsBonus').value);
                         config.DefaultLimit = parseInt(document.querySelector('#DefaultLimit').value, 10);
                         config.RecentWatchedCount = parseInt(document.querySelector('#RecentWatchedCount').value, 10);
+                        config.MinimumSeedPlaybackSeconds = parseInt(document.querySelector('#MinimumSeedPlaybackSeconds').value, 10);
                         config.MaxCandidates = parseInt(document.querySelector('#MaxCandidates').value, 10);
                         config.MinimumScore = parseFloat(document.querySelector('#MinimumScore').value);
                         config.ExcludePlayedItems = document.querySelector('#ExcludePlayedItems').checked;
