@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.TagNameRecommendations</RootNamespace>
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
@@ -8,10 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.9.11">
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.8">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Jellyfin.Model" Version="10.9.11">
+    <PackageReference Include="Jellyfin.Model" Version="10.11.8">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="SQLitePCL.pretty.netstandard" Version="3.1.0" />

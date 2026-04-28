@@ -21,7 +21,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 9.0.x
 
       - name: Restore
         run: dotnet restore Jellyfin.Plugin.TagNameRecommendations.sln
@@ -34,7 +34,7 @@ jobs:
         with:
           name: Jellyfin.Plugin.TagNameRecommendations
           path: |
-            Jellyfin.Plugin.TagNameRecommendations/bin/Release/net8.0/Jellyfin.Plugin.TagNameRecommendations.dll
-            Jellyfin.Plugin.TagNameRecommendations/bin/Release/net8.0/SQLitePCL.pretty.dll
+            Jellyfin.Plugin.TagNameRecommendations/bin/Release/net9.0/Jellyfin.Plugin.TagNameRecommendations.dll
+            Jellyfin.Plugin.TagNameRecommendations/bin/Release/net9.0/SQLitePCL.pretty.dll
             build.yaml
           if-no-files-found: error
