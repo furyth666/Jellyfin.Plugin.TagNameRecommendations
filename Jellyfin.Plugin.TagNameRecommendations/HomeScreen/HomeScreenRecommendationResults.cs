@@ -83,12 +83,7 @@ public class HomeScreenRecommendationResults
             ImageTypeLimit = 1
         };
 
-        var dtoMethod = _dtoService.GetType()
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
-            .FirstOrDefault(method => method.Name == nameof(IDtoService.GetBaseItemDtos)
-                && method.GetParameters().Length == 3);
-
-        var dtos = dtoMethod?.Invoke(_dtoService, [items, dtoOptions, userObject]) as IEnumerable<BaseItemDto>;
+        var dtos = InvokeBaseItemDtos(items, dtoOptions, userObject);
         return new QueryResult<BaseItemDto>(dtos?.ToArray() ?? []);
     }
 
@@ -98,5 +93,83 @@ public class HomeScreenRecommendationResults
             .GetType()
             .GetMethod(nameof(IUserManager.GetUserById), [typeof(Guid)])
             ?.Invoke(_userManager, [userId]);
+    }
+
+    private IEnumerable<BaseItemDto>? InvokeBaseItemDtos(List<BaseItem> items, DtoOptions dtoOptions, object userObject)
+    {
+        foreach (var method in _dtoService.GetType()
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .Where(method => method.Name == nameof(IDtoService.GetBaseItemDtos))
+            .OrderBy(method => method.GetParameters().Length))
+        {
+            var args = BuildDtoMethodArguments(method, items, dtoOptions, userObject);
+            if (args is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                if (method.Invoke(_dtoService, args) is IEnumerable<BaseItemDto> dtos)
+                {
+                    return dtos;
+                }
+            }
+            catch (TargetInvocationException)
+            {
+            }
+            catch (ArgumentException)
+            {
+            }
+        }
+
+        return null;
+    }
+
+    private static object?[]? BuildDtoMethodArguments(MethodInfo method, List<BaseItem> items, DtoOptions dtoOptions, object userObject)
+    {
+        var parameters = method.GetParameters();
+        var args = new object?[parameters.Length];
+
+        for (var index = 0; index < parameters.Length; index++)
+        {
+            var parameter = parameters[index];
+            var parameterType = parameter.ParameterType;
+
+            if (parameterType.IsAssignableFrom(items.GetType()))
+            {
+                args[index] = items;
+            }
+            else if (parameterType.IsAssignableFrom(dtoOptions.GetType()))
+            {
+                args[index] = dtoOptions;
+            }
+            else if (parameterType.IsAssignableFrom(userObject.GetType()))
+            {
+                args[index] = userObject;
+            }
+            else if (parameter.HasDefaultValue)
+            {
+                args[index] = parameter.DefaultValue;
+            }
+            else if (!parameterType.IsValueType || Nullable.GetUnderlyingType(parameterType) is not null)
+            {
+                args[index] = null;
+            }
+            else if (parameterType == typeof(bool))
+            {
+                args[index] = false;
+            }
+            else if (parameterType == typeof(int))
+            {
+                args[index] = 0;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        return args;
     }
 }
