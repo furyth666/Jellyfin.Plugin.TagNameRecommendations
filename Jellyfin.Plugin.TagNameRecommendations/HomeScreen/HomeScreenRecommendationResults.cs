@@ -89,7 +89,7 @@ public class HomeScreenRecommendationResults
                 && method.GetParameters().Length >= 3);
 
         var dtos = dtoMethod?.Invoke(_dtoService, [items, dtoOptions, userObject]) as IEnumerable<BaseItemDto>;
-        return new QueryResult<BaseItemDto>(dtos ?? []);
+        return new QueryResult<BaseItemDto>(dtos?.ToArray() ?? []);
     }
 
     private object? GetUserById(Guid userId)
