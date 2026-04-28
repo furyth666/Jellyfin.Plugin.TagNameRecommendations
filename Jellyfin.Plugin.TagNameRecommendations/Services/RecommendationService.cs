@@ -239,8 +239,8 @@ SELECT DISTINCT
     b.MediaType
 FROM UserData u
 INNER JOIN BaseItems b
-    ON lower(replace(b.Id, '-', '')) = lower(replace(u.ItemId, '-', ''))
-WHERE lower(replace(u.UserId, '-', '')) = @UserId
+    ON b.Id = u.ItemId
+WHERE u.UserId = @UserId
     AND u.IsFavorite = 1
     AND (
         b.MediaType = 'Video'
@@ -249,7 +249,7 @@ WHERE lower(replace(u.UserId, '-', '')) = @UserId
 
         using var connection = SQLite3.Open(databasePath, ConnectionFlags.ReadOnly, null);
         using var statement = connection.PrepareStatement(sql);
-        statement.BindParameters["@UserId"].Bind(userId.ToString("N", CultureInfo.InvariantCulture));
+        statement.BindParameters["@UserId"].Bind(userId.ToString("D", CultureInfo.InvariantCulture).ToUpperInvariant());
 
         foreach (var row in statement.Query())
         {
@@ -297,7 +297,7 @@ SELECT
 FROM PeopleBaseItemMap m
 INNER JOIN Peoples p
     ON p.Id = m.PeopleId
-WHERE lower(replace(m.ItemId, '-', '')) IN ({itemIds})
+WHERE m.ItemId IN ({itemIds})
     AND p.PersonType = 'Actor'";
 
         var result = new Dictionary<Guid, HashSet<string>>();
@@ -306,7 +306,7 @@ WHERE lower(replace(m.ItemId, '-', '')) IN ({itemIds})
 
         for (var index = 0; index < ids.Length; index++)
         {
-            statement.BindParameters[$"@ItemId{index}"].Bind(ids[index].ToString("N", CultureInfo.InvariantCulture));
+            statement.BindParameters[$"@ItemId{index}"].Bind(ids[index].ToString("D", CultureInfo.InvariantCulture).ToUpperInvariant());
         }
 
         foreach (var row in statement.Query())

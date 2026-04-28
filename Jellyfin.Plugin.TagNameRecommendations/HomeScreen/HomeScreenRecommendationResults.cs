@@ -86,7 +86,7 @@ public class HomeScreenRecommendationResults
         var dtoMethod = _dtoService.GetType()
             .GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .FirstOrDefault(method => method.Name == nameof(IDtoService.GetBaseItemDtos)
-                && method.GetParameters().Length >= 3);
+                && method.GetParameters().Length == 3);
 
         var dtos = dtoMethod?.Invoke(_dtoService, [items, dtoOptions, userObject]) as IEnumerable<BaseItemDto>;
         return new QueryResult<BaseItemDto>(dtos?.ToArray() ?? []);
