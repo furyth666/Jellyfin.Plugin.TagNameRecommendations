@@ -258,7 +258,7 @@ WHERE lower(replace(u.UserId, '-', '')) = @UserId
             var type = row[2].ToString();
             var mediaType = row[3].ToString();
 
-            if (string.Equals(mediaType, MediaType.Video, StringComparison.OrdinalIgnoreCase)
+            if (string.Equals(mediaType, "Video", StringComparison.OrdinalIgnoreCase)
                 && Guid.TryParse(itemId, out var videoId))
             {
                 videoItemIds.Add(videoId);
