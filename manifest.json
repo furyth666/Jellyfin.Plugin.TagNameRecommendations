@@ -8,6 +8,14 @@
     "overview": "Simple Jellyfin recommendations based on item tags, names, and real playback duration.",
     "versions": [
       {
+        "checksum": "990d62b5bac873878932b08cb25cf7dd",
+        "changelog": "Add user favorite videos as recommendation seeds and favorite actors as candidate score boosts.",
+        "targetAbi": "10.9.0.0",
+        "sourceUrl": "https://github.com/furyth666/Jellyfin.Plugin.TagNameRecommendations/releases/download/v0.4.5.0/Jellyfin.Plugin.TagNameRecommendations_0.4.5.0.zip",
+        "timestamp": "2026-04-28 14:18:10",
+        "version": "0.4.5.0"
+      },
+      {
         "checksum": "76f296d71dbe72c03c72d0794ca03c98",
         "changelog": "Avoid binary binding to Jellyfin 10.11 ILibraryManager.GetItemList return type changes.",
         "targetAbi": "10.9.0.0",
