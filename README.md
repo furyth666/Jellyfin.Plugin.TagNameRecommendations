@@ -12,6 +12,8 @@
 
 如果没有安装或未启用，`RecentlyWatched` 接口会返回 `424 Failed Dependency`。
 
+如果希望 Jellyfin Web 首页出现推荐栏，还需要安装并启用 `Home Screen Sections / Modular Home` 插件。没有安装它时，本插件仍然可以通过 API 使用。
+
 ## Install
 
 在 Jellyfin 后台的插件仓库中添加这个 URL：
@@ -21,6 +23,18 @@ https://raw.githubusercontent.com/furyth666/Jellyfin.Plugin.TagNameRecommendatio
 ```
 
 然后在 Catalog 里安装 `Tag Name Recommendations`。
+
+## Home Screen
+
+首页推荐栏依赖 `Home Screen Sections / Modular Home`：
+
+1. 安装并启用 `Playback Reporting`。
+2. 安装并启用 `Home Screen Sections / Modular Home` 以及它要求的依赖。
+3. 安装或更新本插件到 `0.3.0.0` 后重启 Jellyfin。
+4. 打开 Jellyfin Web 首页侧边栏里的 `Modular Home` 设置。
+5. 启用 `Recommended for You` section，并把它放到你想要的位置。
+
+这个推荐栏使用 Playback Reporting 的真实播放时长作为推荐种子，不会把单纯拖动进度条当成真实观看。
 
 ## API
 
