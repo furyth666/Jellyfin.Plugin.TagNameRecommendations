@@ -201,7 +201,7 @@ public class RecommendationService : IRecommendationService
 
         return new SeedPlayback(
             item,
-            userData.LastPlayedDate,
+            userData?.LastPlayedDate,
             activity.LastPlaybackActivityDate,
             activity.ActualPlaybackSeconds,
             activity.PlaybackReportPlayCount,
