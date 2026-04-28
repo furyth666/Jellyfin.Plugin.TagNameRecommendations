@@ -19,6 +19,7 @@ namespace Jellyfin.Plugin.TagNameRecommendations.Services;
 public class RecommendationService : IRecommendationService
 {
     private static readonly Guid PlaybackReportingPluginId = Guid.Parse("5c534381-91a3-43cb-907a-35aa02eb9d2c");
+    private static readonly Guid ReportsPluginId = Guid.Parse("d4312cd9-5c90-4f38-82e8-51da566790e8");
     private static readonly BaseItemKind[] SupportedSeedKinds =
     [
         BaseItemKind.Movie,
@@ -57,7 +58,8 @@ public class RecommendationService : IRecommendationService
 
     /// <inheritdoc />
     public bool IsPlaybackReportingAvailable =>
-        _pluginManager.GetPlugin(PlaybackReportingPluginId)?.IsEnabledAndSupported == true;
+        _pluginManager.GetPlugin(PlaybackReportingPluginId)?.IsEnabledAndSupported == true
+        || _pluginManager.GetPlugin(ReportsPluginId)?.IsEnabledAndSupported == true;
 
     /// <inheritdoc />
     public RecommendationResponse? GetRecommendations(Guid itemId, Guid? userId, int? limit)

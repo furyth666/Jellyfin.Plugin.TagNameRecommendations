@@ -4,7 +4,7 @@
 
 ## 前置依赖
 
-`RecentlyWatched` 推荐需要先安装并启用 Jellyfin 官方 `Playback Reporting` 插件。插件 GUID：
+`RecentlyWatched` 推荐需要先安装并启用 Jellyfin 官方 `Playback Reporting` / `Reports` 插件。旧版插件 GUID：
 
 ```text
 5c534381-91a3-43cb-907a-35aa02eb9d2c

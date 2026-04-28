@@ -72,8 +72,9 @@ public class RecommendationsController : ControllerBase
             return StatusCode(StatusCodes.Status424FailedDependency, new
             {
                 Error = "Playback Reporting plugin is required for recently watched recommendations.",
-                RequiredPlugin = "Playback Reporting",
-                RequiredPluginId = "5c534381-91a3-43cb-907a-35aa02eb9d2c"
+                RequiredPlugin = "Playback Reporting or Reports",
+                RequiredPluginId = "5c534381-91a3-43cb-907a-35aa02eb9d2c",
+                AlternatePluginId = "d4312cd9-5c90-4f38-82e8-51da566790e8"
             });
         }
 
