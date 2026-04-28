@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Jellyfin.Data.Enums;
-using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Plugin.TagNameRecommendations.Configuration;
 using Jellyfin.Plugin.TagNameRecommendations.Models;
 using MediaBrowser.Common.Plugins;
@@ -32,7 +31,6 @@ public class RecommendationService : IRecommendationService
     private readonly IServerApplicationPaths _applicationPaths;
     private readonly ILibraryManager _libraryManager;
     private readonly IPluginManager _pluginManager;
-    private readonly IUserDataManager _userDataManager;
     private readonly IUserManager _userManager;
 
     /// <summary>
@@ -41,19 +39,16 @@ public class RecommendationService : IRecommendationService
     /// <param name="applicationPaths">The server application paths.</param>
     /// <param name="libraryManager">The library manager.</param>
     /// <param name="pluginManager">The plugin manager.</param>
-    /// <param name="userDataManager">The user data manager.</param>
     /// <param name="userManager">The user manager.</param>
     public RecommendationService(
         IServerApplicationPaths applicationPaths,
         ILibraryManager libraryManager,
         IPluginManager pluginManager,
-        IUserDataManager userDataManager,
         IUserManager userManager)
     {
         _applicationPaths = applicationPaths;
         _libraryManager = libraryManager;
         _pluginManager = pluginManager;
-        _userDataManager = userDataManager;
         _userManager = userManager;
     }
 
@@ -65,10 +60,7 @@ public class RecommendationService : IRecommendationService
     /// <inheritdoc />
     public RecommendationResponse? GetRecommendations(Guid itemId, Guid? userId, int? limit)
     {
-        var user = userId.HasValue ? _userManager.GetUserById(userId.Value) : null;
-        var seed = user is null
-            ? _libraryManager.GetItemById(itemId)
-            : _libraryManager.GetItemById<BaseItem>(itemId, user);
+        var seed = _libraryManager.GetItemById(itemId);
 
         if (seed is null)
         {
@@ -80,7 +72,7 @@ public class RecommendationService : IRecommendationService
         var maxCandidates = Math.Clamp(config.MaxCandidates, resultLimit, 5000);
         var seedProfile = new SeedProfile(seed, 1);
 
-        var candidates = _libraryManager.GetItemList(new InternalItemsQuery(user)
+        var candidates = _libraryManager.GetItemList(new InternalItemsQuery
         {
             Recursive = true,
             Limit = maxCandidates,
@@ -116,8 +108,7 @@ public class RecommendationService : IRecommendationService
             return null;
         }
 
-        var user = _userManager.GetUserById(userId);
-        if (user is null)
+        if (GetUserById(userId) is null)
         {
             return null;
         }
@@ -128,8 +119,8 @@ public class RecommendationService : IRecommendationService
         var recentLimit = Math.Clamp(seedLimit ?? config.RecentWatchedCount, 1, 50);
         var minimumPlaybackSeconds = Math.Clamp(config.MinimumSeedPlaybackSeconds, 0, 86400);
 
-        var recentItems = GetRecentPlaybackReportSeeds(user.Id, minimumPlaybackSeconds, Math.Clamp(recentLimit * 4, recentLimit, 200))
-            .Select(activity => CreateSeed(activity, user))
+        var recentItems = GetRecentPlaybackReportSeeds(userId, minimumPlaybackSeconds, Math.Clamp(recentLimit * 4, recentLimit, 200))
+            .Select(CreateSeed)
             .Where(seed => seed is not null)
             .Select(seed => seed!)
             .Take(recentLimit)
@@ -145,7 +136,7 @@ public class RecommendationService : IRecommendationService
             .ToArray();
         var seedIds = recentItems.Select(seed => seed.Item.Id).ToArray();
 
-        var candidateQuery = new InternalItemsQuery(user)
+        var candidateQuery = new InternalItemsQuery
         {
             Recursive = true,
             Limit = maxCandidates,
@@ -155,11 +146,6 @@ public class RecommendationService : IRecommendationService
             IsVirtualItem = false,
             EnableTotalRecordCount = false
         };
-
-        if (config.ExcludePlayedItems)
-        {
-            candidateQuery.IsPlayed = false;
-        }
 
         var candidates = _libraryManager.GetItemList(candidateQuery);
         var scoredItems = candidates
@@ -179,21 +165,28 @@ public class RecommendationService : IRecommendationService
         };
     }
 
-    private SeedPlayback? CreateSeed(PlaybackActivity activity, User user)
+    private object? GetUserById(Guid userId)
+    {
+        return _userManager
+            .GetType()
+            .GetMethod(nameof(IUserManager.GetUserById), [typeof(Guid)])
+            ?.Invoke(_userManager, [userId]);
+    }
+
+    private SeedPlayback? CreateSeed(PlaybackActivity activity)
     {
         if (!Guid.TryParse(activity.ItemId, out var itemId))
         {
             return null;
         }
 
-        var item = _libraryManager.GetItemById<BaseItem>(itemId, user);
+        var item = _libraryManager.GetItemById(itemId);
         if (item is null || item.MediaType != MediaType.Video || !SupportedSeedKinds.Contains(item.GetBaseItemKind()))
         {
             return null;
         }
 
-        var userData = _userDataManager.GetUserData(user, item);
-        var playbackPositionTicks = Math.Max(0, userData?.PlaybackPositionTicks ?? 0);
+        var playbackPositionTicks = 0L;
         var playbackPositionSeconds = TimeSpan.FromTicks(playbackPositionTicks).TotalSeconds;
         var playedPercentage = item.RunTimeTicks is > 0
             ? Math.Round(Math.Clamp((double)playbackPositionTicks / item.RunTimeTicks.Value * 100, 0, 100), 2)
@@ -201,14 +194,14 @@ public class RecommendationService : IRecommendationService
 
         return new SeedPlayback(
             item,
-            userData?.LastPlayedDate,
+            null,
             activity.LastPlaybackActivityDate,
             activity.ActualPlaybackSeconds,
             activity.PlaybackReportPlayCount,
             playbackPositionTicks,
             playbackPositionSeconds,
             playedPercentage,
-            userData?.Played ?? false);
+            activity.ActualPlaybackSeconds >= item.RunTimeTicks / TimeSpan.TicksPerSecond * 0.9);
     }
 
     private static double GetSeedWeight(SeedPlayback seed, int index)

@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Reflection;
 using Jellyfin.Plugin.TagNameRecommendations.Services;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Entities;
@@ -45,8 +46,8 @@ public class HomeScreenRecommendationResults
     /// <returns>Recommended items as Jellyfin DTOs.</returns>
     public QueryResult<BaseItemDto> GetRecentlyWatchedRecommendations(HomeScreenRecommendationPayload payload)
     {
-        var user = _userManager.GetUserById(payload.UserId);
-        if (user is null || !_recommendationService.IsPlaybackReportingAvailable)
+        var userObject = GetUserById(payload.UserId);
+        if (userObject is null || !_recommendationService.IsPlaybackReportingAvailable)
         {
             return new QueryResult<BaseItemDto>();
         }
@@ -58,7 +59,7 @@ public class HomeScreenRecommendationResults
         }
 
         var items = response.Items
-            .Select(candidate => _libraryManager.GetItemById<BaseItem>(candidate.Id, user))
+            .Select(candidate => _libraryManager.GetItemById(candidate.Id))
             .Where(item => item is not null)
             .Select(item => item!)
             .ToList();
@@ -80,6 +81,20 @@ public class HomeScreenRecommendationResults
             ImageTypeLimit = 1
         };
 
-        return new QueryResult<BaseItemDto>(_dtoService.GetBaseItemDtos(items, dtoOptions, user));
+        var dtoMethod = _dtoService.GetType()
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .FirstOrDefault(method => method.Name == nameof(IDtoService.GetBaseItemDtos)
+                && method.GetParameters().Length >= 3);
+
+        var dtos = dtoMethod?.Invoke(_dtoService, [items, dtoOptions, userObject]) as IEnumerable<BaseItemDto>;
+        return new QueryResult<BaseItemDto>(dtos ?? []);
+    }
+
+    private object? GetUserById(Guid userId)
+    {
+        return _userManager
+            .GetType()
+            .GetMethod(nameof(IUserManager.GetUserById), [typeof(Guid)])
+            ?.Invoke(_userManager, [userId]);
     }
 }
