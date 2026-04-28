@@ -93,15 +93,15 @@ public class RecommendationService : IRecommendationService
             .Where(item => item.Score >= config.MinimumScore)
             .OrderByDescending(item => item.Score)
             .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
-            .Take(resultLimit)
-            .ToArray();
+            .Take(GetDiversityPoolSize(resultLimit, config))
+            .ToList();
 
         return new RecommendationResponse
         {
             SeedItemId = seed.Id,
             SeedItemName = seed.Name,
             Seeds = [new RecommendationSeed { Id = seed.Id, Name = seed.Name }],
-            Items = scoredItems
+            Items = Diversify(scoredItems, resultLimit, config)
         };
     }
 
@@ -164,15 +164,15 @@ public class RecommendationService : IRecommendationService
             .Where(item => item.Score >= config.MinimumScore)
             .OrderByDescending(item => item.Score)
             .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
-            .Take(resultLimit)
-            .ToArray();
+            .Take(GetDiversityPoolSize(resultLimit, config))
+            .ToList();
 
         return new RecommendationResponse
         {
             SeedItemId = recentItems.Length > 0 ? recentItems[0].Item.Id : Guid.Empty,
             SeedItemName = recentItems.Length > 0 ? recentItems[0].Item.Name : string.Empty,
             Seeds = recentItems.Select(seed => seed.ToRecommendationSeed()).ToArray(),
-            Items = scoredItems
+            Items = Diversify(scoredItems, resultLimit, config)
         };
     }
 
@@ -332,6 +332,50 @@ WHERE m.ItemId IN ({itemIds})
         }
 
         return result;
+    }
+
+    private static IReadOnlyList<RecommendationCandidate> Diversify(
+        List<RecommendationCandidate> candidates,
+        int resultLimit,
+        PluginConfiguration config)
+    {
+        var actorLimit = Math.Clamp(config.MaxResultsPerFavoriteActor, 1, resultLimit);
+        var selected = new List<RecommendationCandidate>();
+        var actorCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        while (selected.Count < resultLimit && candidates.Count > 0)
+        {
+            var nextIndex = candidates.FindIndex(candidate => CanSelectForActorDiversity(candidate, actorCounts, actorLimit));
+            if (nextIndex < 0)
+            {
+                nextIndex = 0;
+            }
+
+            var next = candidates[nextIndex];
+            candidates.RemoveAt(nextIndex);
+            selected.Add(next);
+
+            foreach (var actor in next.MatchedFavoriteActors)
+            {
+                actorCounts[actor] = actorCounts.GetValueOrDefault(actor) + 1;
+            }
+        }
+
+        return selected;
+    }
+
+    private static bool CanSelectForActorDiversity(
+        RecommendationCandidate candidate,
+        IReadOnlyDictionary<string, int> actorCounts,
+        int actorLimit)
+    {
+        return candidate.MatchedFavoriteActors.Count == 0
+            || candidate.MatchedFavoriteActors.All(actor => actorCounts.GetValueOrDefault(actor) < actorLimit);
+    }
+
+    private static int GetDiversityPoolSize(int resultLimit, PluginConfiguration config)
+    {
+        return Math.Clamp(resultLimit * Math.Clamp(config.DiversityCandidateMultiplier, 1, 10), resultLimit, 500);
     }
 
     private SeedPlayback? CreateSeed(PlaybackActivity activity)

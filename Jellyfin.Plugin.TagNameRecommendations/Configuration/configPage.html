@@ -39,6 +39,26 @@
                         <div class="fieldDescription">Playback Reporting entries below this total watched duration are ignored as seeds.</div>
                     </div>
                     <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="FavoriteVideoSeedWeight">Favorite video seed weight</label>
+                        <input id="FavoriteVideoSeedWeight" name="FavoriteVideoSeedWeight" type="number" is="emby-input" min="0" step="0.01" />
+                        <div class="fieldDescription">How strongly favorited videos affect recommendations.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="FavoriteActorWeight">Favorite actor weight</label>
+                        <input id="FavoriteActorWeight" name="FavoriteActorWeight" type="number" is="emby-input" min="0" step="0.01" />
+                        <div class="fieldDescription">How strongly favorited actors boost matching videos.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="MaxResultsPerFavoriteActor">Max results per favorite actor</label>
+                        <input id="MaxResultsPerFavoriteActor" name="MaxResultsPerFavoriteActor" type="number" is="emby-input" min="1" max="20" />
+                        <div class="fieldDescription">Limits how many returned items may match the same favorited actor.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="DiversityCandidateMultiplier">Diversity candidate multiplier</label>
+                        <input id="DiversityCandidateMultiplier" name="DiversityCandidateMultiplier" type="number" is="emby-input" min="1" max="10" />
+                        <div class="fieldDescription">Higher values keep more high-scoring items available for diversity re-ranking.</div>
+                    </div>
+                    <div class="inputContainer">
                         <label class="inputLabel inputLabelUnfocused" for="MaxCandidates">Max candidates</label>
                         <input id="MaxCandidates" name="MaxCandidates" type="number" is="emby-input" min="50" max="5000" />
                         <div class="fieldDescription">Maximum number of video items scored per request.</div>
@@ -76,6 +96,10 @@
                         document.querySelector('#DefaultLimit').value = config.DefaultLimit;
                         document.querySelector('#RecentWatchedCount').value = config.RecentWatchedCount;
                         document.querySelector('#MinimumSeedPlaybackSeconds').value = config.MinimumSeedPlaybackSeconds;
+                        document.querySelector('#FavoriteVideoSeedWeight').value = config.FavoriteVideoSeedWeight;
+                        document.querySelector('#FavoriteActorWeight').value = config.FavoriteActorWeight;
+                        document.querySelector('#MaxResultsPerFavoriteActor').value = config.MaxResultsPerFavoriteActor;
+                        document.querySelector('#DiversityCandidateMultiplier').value = config.DiversityCandidateMultiplier;
                         document.querySelector('#MaxCandidates').value = config.MaxCandidates;
                         document.querySelector('#MinimumScore').value = config.MinimumScore;
                         document.querySelector('#ExcludePlayedItems').checked = config.ExcludePlayedItems;
@@ -93,6 +117,10 @@
                         config.DefaultLimit = parseInt(document.querySelector('#DefaultLimit').value, 10);
                         config.RecentWatchedCount = parseInt(document.querySelector('#RecentWatchedCount').value, 10);
                         config.MinimumSeedPlaybackSeconds = parseInt(document.querySelector('#MinimumSeedPlaybackSeconds').value, 10);
+                        config.FavoriteVideoSeedWeight = parseFloat(document.querySelector('#FavoriteVideoSeedWeight').value);
+                        config.FavoriteActorWeight = parseFloat(document.querySelector('#FavoriteActorWeight').value);
+                        config.MaxResultsPerFavoriteActor = parseInt(document.querySelector('#MaxResultsPerFavoriteActor').value, 10);
+                        config.DiversityCandidateMultiplier = parseInt(document.querySelector('#DiversityCandidateMultiplier').value, 10);
                         config.MaxCandidates = parseInt(document.querySelector('#MaxCandidates').value, 10);
                         config.MinimumScore = parseFloat(document.querySelector('#MinimumScore').value);
                         config.ExcludePlayedItems = document.querySelector('#ExcludePlayedItems').checked;
