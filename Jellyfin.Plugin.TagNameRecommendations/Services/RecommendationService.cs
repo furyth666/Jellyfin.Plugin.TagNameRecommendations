@@ -193,7 +193,7 @@ public class RecommendationService : IRecommendationService
         }
 
         var userData = _userDataManager.GetUserData(user, item);
-        var playbackPositionTicks = Math.Max(0, userData.PlaybackPositionTicks);
+        var playbackPositionTicks = Math.Max(0, userData?.PlaybackPositionTicks ?? 0);
         var playbackPositionSeconds = TimeSpan.FromTicks(playbackPositionTicks).TotalSeconds;
         var playedPercentage = item.RunTimeTicks is > 0
             ? Math.Round(Math.Clamp((double)playbackPositionTicks / item.RunTimeTicks.Value * 100, 0, 100), 2)
@@ -208,7 +208,7 @@ public class RecommendationService : IRecommendationService
             playbackPositionTicks,
             playbackPositionSeconds,
             playedPercentage,
-            userData.Played);
+            userData?.Played ?? false);
     }
 
     private static double GetSeedWeight(SeedPlayback seed, int index)
