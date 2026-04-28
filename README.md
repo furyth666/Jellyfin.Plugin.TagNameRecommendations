@@ -70,3 +70,7 @@ config/plugins/TagNameRecommendations/Jellyfin.Plugin.TagNameRecommendations.dll
 ```
 
 然后重启 Jellyfin。
+
+## License
+
+GPL-3.0-or-later
