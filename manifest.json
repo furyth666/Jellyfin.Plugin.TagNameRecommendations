@@ -8,6 +8,14 @@
     "overview": "Simple Jellyfin recommendations based on item tags, names, and real playback duration.",
     "versions": [
       {
+        "checksum": "56ae29c2ff817285a8990ed99caefb6f",
+        "changelog": "Add diversity re-ranking so one favorite actor does not dominate Recommended for You.",
+        "targetAbi": "10.9.0.0",
+        "sourceUrl": "https://github.com/furyth666/Jellyfin.Plugin.TagNameRecommendations/releases/download/v0.4.8.0/Jellyfin.Plugin.TagNameRecommendations_0.4.8.0.zip",
+        "timestamp": "2026-04-28 14:35:05",
+        "version": "0.4.8.0"
+      },
+      {
         "checksum": "115a4749153edff8b60a581603fb8497",
         "changelog": "Resolve Jellyfin 10.11 IDtoService overloads for Home Screen Sections rendering.",
         "targetAbi": "10.9.0.0",
