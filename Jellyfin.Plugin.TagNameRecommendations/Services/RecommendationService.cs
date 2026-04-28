@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Jellyfin.Data.Enums;
+using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Plugin.TagNameRecommendations.Configuration;
 using Jellyfin.Plugin.TagNameRecommendations.Models;
 using MediaBrowser.Common.Plugins;
@@ -178,7 +179,7 @@ public class RecommendationService : IRecommendationService
         };
     }
 
-    private SeedPlayback? CreateSeed(PlaybackActivity activity, Jellyfin.Data.Entities.User user)
+    private SeedPlayback? CreateSeed(PlaybackActivity activity, User user)
     {
         if (!Guid.TryParse(activity.ItemId, out var itemId))
         {
