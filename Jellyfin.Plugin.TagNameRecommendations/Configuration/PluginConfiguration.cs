@@ -21,7 +21,7 @@ public class PluginConfiguration : BasePluginConfiguration
         FavoriteVideoSeedWeight = 0.75;
         FavoriteActorWeight = 0.2;
         MaxResultsPerFavoriteActor = 2;
-        DiversityCandidateMultiplier = 4;
+        DiversityCandidateMultiplier = 10;
         MaxCandidates = 500;
         MinimumScore = 5;
         ExcludePlayedItems = true;
