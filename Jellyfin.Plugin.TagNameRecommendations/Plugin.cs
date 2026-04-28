@@ -23,6 +23,24 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     private const string HomeScreenSectionId = "f57a21c8-6b4a-4e87-8546-cc9db8db5f3a";
 
+    private static readonly Action<ILogger, Exception?> LogHomeScreenSectionsNotLoaded =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(1000, nameof(LogHomeScreenSectionsNotLoaded)),
+            "Home Screen Sections plugin is not loaded; skipping homepage recommendation section registration.");
+
+    private static readonly Action<ILogger, Exception?> LogHomeScreenSectionsInterfaceMissing =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(1001, nameof(LogHomeScreenSectionsInterfaceMissing)),
+            "Home Screen Sections plugin is loaded, but PluginInterface.RegisterSection was not found.");
+
+    private static readonly Action<ILogger, Exception?> LogHomeScreenSectionRegistered =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(1002, nameof(LogHomeScreenSectionRegistered)),
+            "Registered Home Screen Sections recommendation row.");
+
     private readonly ILogger<Plugin> _logger;
 
     /// <summary>
@@ -64,7 +82,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
         if (homeScreenSectionsAssembly is null)
         {
-            _logger.LogInformation("Home Screen Sections plugin is not loaded; skipping homepage recommendation section registration.");
+            LogHomeScreenSectionsNotLoaded(_logger, null);
             return;
         }
 
@@ -72,7 +90,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         var registerSectionMethod = pluginInterfaceType?.GetMethod("RegisterSection", BindingFlags.Public | BindingFlags.Static);
         if (registerSectionMethod is null)
         {
-            _logger.LogWarning("Home Screen Sections plugin is loaded, but PluginInterface.RegisterSection was not found.");
+            LogHomeScreenSectionsInterfaceMissing(_logger, null);
             return;
         }
 
@@ -88,7 +106,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         };
 
         registerSectionMethod.Invoke(null, [payload]);
-        _logger.LogInformation("Registered Home Screen Sections recommendation row.");
+        LogHomeScreenSectionRegistered(_logger, null);
     }
 
     /// <inheritdoc />
