@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Text.Json;
 using Jellyfin.Plugin.TagNameRecommendations.Configuration;
 using Jellyfin.Plugin.TagNameRecommendations.HomeScreen;
 using MediaBrowser.Common.Configuration;
@@ -12,7 +13,6 @@ using MediaBrowser.Controller;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 
 namespace Jellyfin.Plugin.TagNameRecommendations;
 
@@ -94,16 +94,25 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             return;
         }
 
-        var payload = new JObject
+        var payloadJson = JsonSerializer.Serialize(new
         {
-            ["id"] = HomeScreenSectionId,
-            ["displayText"] = "Recommended for You",
-            ["limit"] = 1,
-            ["additionalData"] = "recently-watched",
-            ["resultsAssembly"] = GetType().Assembly.FullName,
-            ["resultsClass"] = typeof(HomeScreenRecommendationResults).FullName,
-            ["resultsMethod"] = nameof(HomeScreenRecommendationResults.GetRecentlyWatchedRecommendations)
-        };
+            id = HomeScreenSectionId,
+            displayText = "Recommended for You",
+            limit = 1,
+            additionalData = "recently-watched",
+            resultsAssembly = GetType().Assembly.FullName,
+            resultsClass = typeof(HomeScreenRecommendationResults).FullName,
+            resultsMethod = nameof(HomeScreenRecommendationResults.GetRecentlyWatchedRecommendations)
+        });
+
+        var payloadType = registerSectionMethod.GetParameters()[0].ParameterType;
+        var parseMethod = payloadType.GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, [typeof(string)]);
+        var payload = parseMethod?.Invoke(null, [payloadJson]);
+        if (payload is null)
+        {
+            LogHomeScreenSectionsInterfaceMissing(_logger, null);
+            return;
+        }
 
         registerSectionMethod.Invoke(null, [payload]);
         LogHomeScreenSectionRegistered(_logger, null);

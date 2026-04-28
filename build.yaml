@@ -1,7 +1,7 @@
 ---
 name: "Tag Name Recommendations"
 guid: "69d4f8cf-0a27-45b6-8e5f-fae06fbf9b6c"
-version: "0.3.0.0"
+version: "0.3.1.0"
 targetAbi: "10.9.0.0"
 framework: "net8.0"
 overview: "Simple Jellyfin recommendations based on item tags and names."
@@ -14,7 +14,6 @@ category: "General"
 owner: "local"
 artifacts:
 - "Jellyfin.Plugin.TagNameRecommendations.dll"
-- "Newtonsoft.Json.dll"
 - "SQLitePCL.pretty.dll"
 changelog: >
-  Add optional Modular Home / Home Screen Sections integration for a homepage recommendation row.
+  Fix Modular Home section registration across plugin assembly load contexts.
