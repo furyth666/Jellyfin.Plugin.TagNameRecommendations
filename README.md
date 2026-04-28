@@ -30,7 +30,7 @@ https://raw.githubusercontent.com/furyth666/Jellyfin.Plugin.TagNameRecommendatio
 
 1. 安装并启用 `Playback Reporting`。
 2. 安装并启用 `Home Screen Sections / Modular Home` 以及它要求的依赖。
-3. 安装或更新本插件到 `0.4.3.0` 后重启 Jellyfin。
+3. 安装或更新本插件到 `0.4.4.0` 后重启 Jellyfin。
 4. 打开 Jellyfin Web 首页侧边栏里的 `Modular Home` 设置。
 5. 启用 `Recommended for You` section，并把它放到你想要的位置。
 

@@ -72,7 +72,7 @@ public class RecommendationService : IRecommendationService
         var maxCandidates = Math.Clamp(config.MaxCandidates, resultLimit, 5000);
         var seedProfile = new SeedProfile(seed, 1);
 
-        var candidates = _libraryManager.GetItemList(new InternalItemsQuery
+        var candidates = GetItemList(new InternalItemsQuery
         {
             Recursive = true,
             Limit = maxCandidates,
@@ -147,7 +147,7 @@ public class RecommendationService : IRecommendationService
             EnableTotalRecordCount = false
         };
 
-        var candidates = _libraryManager.GetItemList(candidateQuery);
+        var candidates = GetItemList(candidateQuery);
         var scoredItems = candidates
             .Select(item => ScoreItem(seedProfiles, item, config))
             .Where(item => item.Score >= config.MinimumScore)
@@ -171,6 +171,15 @@ public class RecommendationService : IRecommendationService
             .GetType()
             .GetMethod(nameof(IUserManager.GetUserById), [typeof(Guid)])
             ?.Invoke(_userManager, [userId]);
+    }
+
+    private IEnumerable<BaseItem> GetItemList(InternalItemsQuery query)
+    {
+        var method = _libraryManager
+            .GetType()
+            .GetMethod(nameof(ILibraryManager.GetItemList), [typeof(InternalItemsQuery)]);
+
+        return method?.Invoke(_libraryManager, [query]) as IEnumerable<BaseItem> ?? [];
     }
 
     private SeedPlayback? CreateSeed(PlaybackActivity activity)
