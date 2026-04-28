@@ -70,21 +70,26 @@ public class RecommendationService : IRecommendationService
         var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
         var resultLimit = Math.Clamp(limit ?? config.DefaultLimit, 1, 100);
         var maxCandidates = Math.Clamp(config.MaxCandidates, resultLimit, 5000);
-        var seedProfile = new SeedProfile(seed, 1);
+        var favoriteSignals = userId.HasValue ? GetFavoriteSignals(userId.Value) : FavoriteSignals.Empty;
+        var seedProfiles = new[] { new SeedProfile(seed, 1) }
+            .Concat(GetFavoriteVideoSeedProfiles(favoriteSignals, config, [itemId]))
+            .ToArray();
+        var seedIds = seedProfiles.Select(profile => profile.Item.Id).Distinct().ToArray();
 
         var candidates = GetItemList(new InternalItemsQuery
         {
             Recursive = true,
             Limit = maxCandidates,
-            ExcludeItemIds = [itemId],
+            ExcludeItemIds = seedIds,
             IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Series, BaseItemKind.Episode, BaseItemKind.MusicVideo],
             MediaTypes = [MediaType.Video],
             IsVirtualItem = false,
             EnableTotalRecordCount = false
-        });
+        }).ToArray();
+        var candidateActorNames = GetCandidateActorNames(candidates.Select(item => item.Id));
 
         var scoredItems = candidates
-            .Select(item => ScoreItem([seedProfile], item, config))
+            .Select(item => ScoreItem(seedProfiles, item, config, favoriteSignals, candidateActorNames))
             .Where(item => item.Score >= config.MinimumScore)
             .OrderByDescending(item => item.Score)
             .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
@@ -118,6 +123,7 @@ public class RecommendationService : IRecommendationService
         var maxCandidates = Math.Clamp(config.MaxCandidates, resultLimit, 5000);
         var recentLimit = Math.Clamp(seedLimit ?? config.RecentWatchedCount, 1, 50);
         var minimumPlaybackSeconds = Math.Clamp(config.MinimumSeedPlaybackSeconds, 0, 86400);
+        var favoriteSignals = GetFavoriteSignals(userId);
 
         var recentItems = GetRecentPlaybackReportSeeds(userId, minimumPlaybackSeconds, Math.Clamp(recentLimit * 4, recentLimit, 200))
             .Select(CreateSeed)
@@ -126,15 +132,19 @@ public class RecommendationService : IRecommendationService
             .Take(recentLimit)
             .ToArray();
 
-        if (recentItems.Length == 0)
+        if (recentItems.Length == 0 && favoriteSignals.VideoItemIds.Count == 0)
         {
             return new RecommendationResponse();
         }
 
         var seedProfiles = recentItems
             .Select((seed, index) => new SeedProfile(seed.Item, GetSeedWeight(seed, index)))
+            .Concat(GetFavoriteVideoSeedProfiles(favoriteSignals, config, recentItems.Select(seed => seed.Item.Id)))
             .ToArray();
-        var seedIds = recentItems.Select(seed => seed.Item.Id).ToArray();
+        var seedIds = recentItems.Select(seed => seed.Item.Id)
+            .Concat(favoriteSignals.VideoItemIds)
+            .Distinct()
+            .ToArray();
 
         var candidateQuery = new InternalItemsQuery
         {
@@ -147,9 +157,10 @@ public class RecommendationService : IRecommendationService
             EnableTotalRecordCount = false
         };
 
-        var candidates = GetItemList(candidateQuery);
+        var candidates = GetItemList(candidateQuery).ToArray();
+        var candidateActorNames = GetCandidateActorNames(candidates.Select(item => item.Id));
         var scoredItems = candidates
-            .Select(item => ScoreItem(seedProfiles, item, config))
+            .Select(item => ScoreItem(seedProfiles, item, config, favoriteSignals, candidateActorNames))
             .Where(item => item.Score >= config.MinimumScore)
             .OrderByDescending(item => item.Score)
             .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
@@ -158,8 +169,8 @@ public class RecommendationService : IRecommendationService
 
         return new RecommendationResponse
         {
-            SeedItemId = recentItems[0].Item.Id,
-            SeedItemName = recentItems[0].Item.Name,
+            SeedItemId = recentItems.Length > 0 ? recentItems[0].Item.Id : Guid.Empty,
+            SeedItemName = recentItems.Length > 0 ? recentItems[0].Item.Name : string.Empty,
             Seeds = recentItems.Select(seed => seed.ToRecommendationSeed()).ToArray(),
             Items = scoredItems
         };
@@ -180,6 +191,147 @@ public class RecommendationService : IRecommendationService
             .GetMethod(nameof(ILibraryManager.GetItemList), [typeof(InternalItemsQuery)]);
 
         return method?.Invoke(_libraryManager, [query]) as IEnumerable<BaseItem> ?? [];
+    }
+
+    private IEnumerable<SeedProfile> GetFavoriteVideoSeedProfiles(
+        FavoriteSignals favoriteSignals,
+        PluginConfiguration config,
+        IEnumerable<Guid> excludedItemIds)
+    {
+        var excluded = excludedItemIds.ToHashSet();
+        var weight = Math.Clamp(config.FavoriteVideoSeedWeight, 0, 5);
+
+        if (weight <= 0)
+        {
+            yield break;
+        }
+
+        foreach (var itemId in favoriteSignals.VideoItemIds)
+        {
+            if (excluded.Contains(itemId))
+            {
+                continue;
+            }
+
+            var item = _libraryManager.GetItemById(itemId);
+            if (item is not null && item.MediaType == MediaType.Video && SupportedSeedKinds.Contains(item.GetBaseItemKind()))
+            {
+                yield return new SeedProfile(item, weight);
+            }
+        }
+    }
+
+    private FavoriteSignals GetFavoriteSignals(Guid userId)
+    {
+        var databasePath = Path.Combine(_applicationPaths.DataPath, "jellyfin.db");
+        if (!File.Exists(databasePath))
+        {
+            return FavoriteSignals.Empty;
+        }
+
+        var videoItemIds = new HashSet<Guid>();
+        var actorNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        const string sql = @"
+SELECT DISTINCT
+    u.ItemId,
+    b.Name,
+    b.Type,
+    b.MediaType
+FROM UserData u
+INNER JOIN BaseItems b
+    ON lower(replace(b.Id, '-', '')) = lower(replace(u.ItemId, '-', ''))
+WHERE lower(replace(u.UserId, '-', '')) = @UserId
+    AND u.IsFavorite = 1
+    AND (
+        b.MediaType = 'Video'
+        OR b.Type = 'MediaBrowser.Controller.Entities.Person'
+    )";
+
+        using var connection = SQLite3.Open(databasePath, ConnectionFlags.ReadOnly, null);
+        using var statement = connection.PrepareStatement(sql);
+        statement.BindParameters["@UserId"].Bind(userId.ToString("N", CultureInfo.InvariantCulture));
+
+        foreach (var row in statement.Query())
+        {
+            var itemId = row[0].ToString();
+            var name = row[1].ToString();
+            var type = row[2].ToString();
+            var mediaType = row[3].ToString();
+
+            if (string.Equals(mediaType, MediaType.Video, StringComparison.OrdinalIgnoreCase)
+                && Guid.TryParse(itemId, out var videoId))
+            {
+                videoItemIds.Add(videoId);
+                continue;
+            }
+
+            if (string.Equals(type, "MediaBrowser.Controller.Entities.Person", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(name))
+            {
+                actorNames.Add(name.Trim());
+            }
+        }
+
+        return new FavoriteSignals(videoItemIds, actorNames);
+    }
+
+    private Dictionary<Guid, HashSet<string>> GetCandidateActorNames(IEnumerable<Guid> candidateItemIds)
+    {
+        var ids = candidateItemIds.Distinct().ToArray();
+        if (ids.Length == 0)
+        {
+            return [];
+        }
+
+        var databasePath = Path.Combine(_applicationPaths.DataPath, "jellyfin.db");
+        if (!File.Exists(databasePath))
+        {
+            return [];
+        }
+
+        var itemIds = string.Join(",", ids.Select((_, index) => $"@ItemId{index}"));
+        var sql = $@"
+SELECT
+    m.ItemId,
+    p.Name
+FROM PeopleBaseItemMap m
+INNER JOIN Peoples p
+    ON p.Id = m.PeopleId
+WHERE lower(replace(m.ItemId, '-', '')) IN ({itemIds})
+    AND p.PersonType = 'Actor'";
+
+        var result = new Dictionary<Guid, HashSet<string>>();
+        using var connection = SQLite3.Open(databasePath, ConnectionFlags.ReadOnly, null);
+        using var statement = connection.PrepareStatement(sql);
+
+        for (var index = 0; index < ids.Length; index++)
+        {
+            statement.BindParameters[$"@ItemId{index}"].Bind(ids[index].ToString("N", CultureInfo.InvariantCulture));
+        }
+
+        foreach (var row in statement.Query())
+        {
+            if (!Guid.TryParse(row[0].ToString(), out var itemId))
+            {
+                continue;
+            }
+
+            var actorName = row[1].ToString();
+            if (string.IsNullOrWhiteSpace(actorName))
+            {
+                continue;
+            }
+
+            if (!result.TryGetValue(itemId, out var actors))
+            {
+                actors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                result[itemId] = actors;
+            }
+
+            actors.Add(actorName.Trim());
+        }
+
+        return result;
     }
 
     private SeedPlayback? CreateSeed(PlaybackActivity activity)
@@ -274,10 +426,17 @@ LIMIT @Limit";
     private static RecommendationCandidate ScoreItem(
         IReadOnlyList<SeedProfile> seeds,
         BaseItem candidate,
-        PluginConfiguration config)
+        PluginConfiguration config,
+        FavoriteSignals favoriteSignals,
+        IReadOnlyDictionary<Guid, HashSet<string>> candidateActorNames)
     {
         var candidateTags = NormalizeSet(candidate.Tags);
         var candidateNameTokens = TokenizeName(candidate.Name);
+        var candidateActors = candidateActorNames.GetValueOrDefault(candidate.Id) ?? [];
+        var matchedFavoriteActors = favoriteSignals.ActorNames
+            .Intersect(candidateActors, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(actor => actor, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         var matchedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var matchedNameTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var matchedSeedNames = new List<string>();
@@ -311,7 +470,10 @@ LIMIT @Limit";
         }
 
         var weightedScore = totalWeight == 0 ? 0 : totalScore / totalWeight;
-        var score = Math.Round(Math.Clamp(weightedScore * 100, 0, 100), 2);
+        var favoriteActorScore = favoriteSignals.ActorNames.Count == 0
+            ? 0
+            : Math.Min(1, (double)matchedFavoriteActors.Length / Math.Min(favoriteSignals.ActorNames.Count, 3));
+        var score = Math.Round(Math.Clamp((weightedScore + (Math.Clamp(config.FavoriteActorWeight, 0, 5) * favoriteActorScore)) * 100, 0, 100), 2);
 
         return new RecommendationCandidate
         {
@@ -322,7 +484,8 @@ LIMIT @Limit";
             Tags = candidateTags.OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase).ToArray(),
             MatchedTags = matchedTags.OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase).ToArray(),
             MatchedNameTokens = matchedNameTokens.OrderBy(token => token, StringComparer.OrdinalIgnoreCase).ToArray(),
-            MatchedSeedNames = matchedSeedNames.Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+            MatchedSeedNames = matchedSeedNames.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+            MatchedFavoriteActors = matchedFavoriteActors
         };
     }
 
@@ -439,6 +602,13 @@ LIMIT @Limit";
                 Played = Played
             };
         }
+    }
+
+    private sealed record FavoriteSignals(
+        IReadOnlySet<Guid> VideoItemIds,
+        IReadOnlySet<string> ActorNames)
+    {
+        public static FavoriteSignals Empty { get; } = new(new HashSet<Guid>(), new HashSet<string>(StringComparer.OrdinalIgnoreCase));
     }
 
     private sealed record PlaybackActivity(

@@ -44,6 +44,11 @@ public class RecommendationCandidate
     public IReadOnlyList<string> MatchedSeedNames { get; set; } = [];
 
     /// <summary>
+    /// Gets or sets the favorited actors that contributed to the score.
+    /// </summary>
+    public IReadOnlyList<string> MatchedFavoriteActors { get; set; } = [];
+
+    /// <summary>
     /// Gets or sets the candidate tags.
     /// </summary>
     public IReadOnlyList<string> Tags { get; set; } = [];

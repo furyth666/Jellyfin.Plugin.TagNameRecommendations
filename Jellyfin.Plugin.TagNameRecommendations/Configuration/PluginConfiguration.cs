@@ -18,6 +18,8 @@ public class PluginConfiguration : BasePluginConfiguration
         DefaultLimit = 20;
         RecentWatchedCount = 8;
         MinimumSeedPlaybackSeconds = 60;
+        FavoriteVideoSeedWeight = 0.75;
+        FavoriteActorWeight = 0.2;
         MaxCandidates = 500;
         MinimumScore = 5;
         ExcludePlayedItems = true;
@@ -52,6 +54,16 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the minimum real playback duration, in seconds, for Playback Reporting seeds.
     /// </summary>
     public int MinimumSeedPlaybackSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets the seed weight used for favorited videos.
+    /// </summary>
+    public double FavoriteVideoSeedWeight { get; set; }
+
+    /// <summary>
+    /// Gets or sets the bonus weight used when a candidate contains favorited actors.
+    /// </summary>
+    public double FavoriteActorWeight { get; set; }
 
     /// <summary>
     /// Gets or sets the maximum number of library candidates to score.
